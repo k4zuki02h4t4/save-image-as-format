@@ -1,0 +1,8 @@
+{
+  "extName": {
+    "message": "Save Image As Format"
+  },
+  "extDesc": {
+    "message": "Kliknij prawym przyciskiem myszy obraz, aby zapisać go jako JPEG / PNG / WebP / AVIF."
+  }
+}

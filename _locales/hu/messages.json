@@ -1,0 +1,8 @@
+{
+  "extName": {
+    "message": "Save Image As Format"
+  },
+  "extDesc": {
+    "message": "Kattintson jobb gombbal egy képre a mentéshez JPEG / PNG / WebP / AVIF formátumban."
+  }
+}

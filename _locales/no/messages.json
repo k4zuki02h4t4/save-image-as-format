@@ -1,0 +1,8 @@
+{
+  "extName": {
+    "message": "Save Image As Format"
+  },
+  "extDesc": {
+    "message": "Høyreklikk på et bilde for å lagre det som JPEG / PNG / WebP / AVIF."
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "extName": {
+    "message": "Save Image As Format"
+  },
+  "extDesc": {
+    "message": "右键单击图片，将其保存为 JPEG / PNG / WebP / AVIF。"
+  }
+}

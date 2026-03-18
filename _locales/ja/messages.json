@@ -1,0 +1,8 @@
+{
+  "extName": {
+    "message": "Save Image As Format"
+  },
+  "extDesc": {
+    "message": "画像を右クリックして JPEG / PNG / WebP / AVIF で保存できます。"
+  }
+}
