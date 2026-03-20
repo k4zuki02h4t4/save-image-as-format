@@ -29,14 +29,9 @@ function getTimestamp() {
 }
 
 function buildFilename(srcUrl, ext) {
-  let base = 'image';
-  try {
-    const u = new URL(srcUrl);
-    const parts = u.pathname.split('/');
-    const last = parts[parts.length - 1];
-    if (last) base = last.replace(/\.[^.]*$/, '') || 'image';
-  } catch (_) {}
-  return `${base}.${ext}`.replace(/[\\/:*?"<>|]/g, '_').slice(0, 200);
+  const browser = getBrowserName();
+  const timestamp = getTimestamp();
+  return `${browser}_${timestamp}.${ext}`;
 }
 
 // メニューの初期作成
@@ -105,21 +100,26 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   // activeTab + scripting でページコンテキストから画像を取得（host_permissions 不要）
   let srcBlob;
   try {
-    const results = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      world: 'MAIN',
-      func: async (url) => {
-        const resp = await fetch(url);
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const buf = await resp.arrayBuffer();
-        const type = resp.headers.get('content-type') || 'application/octet-stream';
-        return { bytes: Array.from(new Uint8Array(buf)), type };
-      },
-      args: [srcUrl],
-    });
-    const result = results?.[0]?.result;
-    if (!result) throw new Error('executeScript returned no result');
-    srcBlob = new Blob([new Uint8Array(result.bytes)], { type: result.type });
+    if (srcUrl.startsWith('data:')) {
+      const resp = await fetch(srcUrl);
+      srcBlob = await resp.blob();
+    } else {
+      const results = await chrome.scripting.executeScript({
+        target: {tabId: tab.id},
+        world : 'MAIN',
+        func  : async (url) => {
+          const resp = await fetch(url);
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const buf = await resp.arrayBuffer();
+          const type = resp.headers.get('content-type') || 'application/octet-stream';
+          return {bytes: Array.from(new Uint8Array(buf)), type};
+        },
+        args  : [srcUrl],
+      });
+      const result = results?.[0]?.result;
+      if (!result) throw new Error('executeScript returned no result');
+      srcBlob = new Blob([new Uint8Array(result.bytes)], {type: result.type});
+    }
   } catch (err) {
     console.warn('[save-image-as] fetch failed, downloading original:', err.message);
     chrome.downloads.download({ url: srcUrl });
