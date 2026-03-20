@@ -1,5 +1,6 @@
 import avifEncode from './lib/avif/encode.js';
 
+const MENU_ID = 'save-image-as';
 const FORMATS = [
   { id: 'fmt-jpeg', title: 'JPEG', mimeType: 'image/jpeg', ext: 'jpg' },
   { id: 'fmt-png',  title: 'PNG',  mimeType: 'image/png',  ext: 'png' },
@@ -38,24 +39,32 @@ function buildFilename(srcUrl, ext) {
   return `${base}.${ext}`.replace(/[\\/:*?"<>|]/g, '_').slice(0, 200);
 }
 
-// Chrome 123+ で removeAll は Promise 専用 API になったため async/await を使用
+// メニューの初期作成
 async function setupContextMenus() {
   await chrome.contextMenus.removeAll();
-  const httpPattern = ['http://*/*', 'https://*/*'];
+
   chrome.contextMenus.create({
-    id: 'save-image-as', title: 'Save image as', contexts: ['image'],
-    documentUrlPatterns: httpPattern,
+    id: MENU_ID, title: 'Save image as', contexts: ['all'], visible: false
   });
+
   for (const fmt of FORMATS) {
     chrome.contextMenus.create({
-      id: fmt.id, parentId: 'save-image-as', title: fmt.title, contexts: ['image'],
-      documentUrlPatterns: httpPattern,
+      id: fmt.id, parentId: MENU_ID, title: fmt.title, contexts: ['all']
     });
   }
 }
 
 chrome.runtime.onInstalled.addListener(setupContextMenus);
 chrome.runtime.onStartup.addListener(setupContextMenus);
+
+// 表示・非表示の切り替え命令を受け取る
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.type === 'TOGGLE_MENU') {
+    chrome.contextMenus.update(MENU_ID, {
+      visible: message.show
+    });
+  }
+});
 
 // ArrayBuffer → data URL（Service Worker 内で FileReader は使えないため手動変換）
 function arrayBufferToDataUrl(buffer, mimeType) {
@@ -79,9 +88,18 @@ const MAX_DIM = 4096;
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   const fmt = FORMATS.find(f => f.id === info.menuItemId);
   if (!fmt || !info.srcUrl) return;
-  if (!tab?.url?.match(/^https?:/)) return;
+  if (!tab?.url?.match(/^https?:|file:/)) return;
 
-  const srcUrl = info.srcUrl;
+  let srcUrl = info.srcUrl;
+
+  if (!srcUrl) {
+    try {
+      const response = await chrome.tabs.sendMessage(tab.id, { type: 'GET_IMAGE_DATA', format: info.menuItemId });
+      srcUrl = response?.srcUrl;
+    } catch (e) { console.error(e); }
+  }
+  if (!srcUrl) return;
+
   const filename = buildFilename(srcUrl, fmt.ext);
 
   // activeTab + scripting でページコンテキストから画像を取得（host_permissions 不要）
